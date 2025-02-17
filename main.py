@@ -1,41 +1,37 @@
-import requests
+
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
+import pandas as pd
 
+if __name__ == "__main__":
+    # Load the data
+    data_root = "https://github.com/ageron/data/raw/main/"
+    lifesat = pd.read_csv(data_root + "lifesat/lifesat.csv")
+    X = lifesat[["GDP per capita (USD)"]].values
+    y = lifesat[["Life satisfaction"]].values
 
-# Function to fetch data from the Random User Generator API
-def fetch_data(num_samples=300):
-    url = f'https://randomuser.me/api/?results={num_samples}'
-    response = requests.get(url)
-    data = response.json()
-    usernames = [user['login']['username'] for user in data['results']]
-    ages = [user['dob']['age'] for user in data['results']]
-    return usernames, ages
+    # Calculate the bias term
+    X_b = np.c_[np.ones((len(X), 1)), X] # add x0 = 1 to each instance 
+    theta = np.linalg.inv(X_b.T.dot(X_b)).dot(X_b.T).dot(y) # Normal Equation derived from the cost function (MSE)
 
+    model = LinearRegression()
+    model.fit(X, y)
 
-usernames, ages = fetch_data()
+    print("Intercept and Coefficients from Normal Equation: ", theta)
+    print("Intercept and Coefficients from Scikit-Learn: ", model.intercept_, model.coef_)
 
-# Use the length of usernames as the feature
-X = np.array([len(username) for username in usernames]).reshape(-1, 1)
-y = np.array(ages)
+    # Make a prediction for Cyprus
+    X_new = [[22587]]  # Cyprus' GDP per capita
+    print("Prediction for Cyprus using Normal Equation: ", X_new[0][0] * theta[1] + theta[0])
+    print("Prediction for Cyprus using Scikit-Learn: ", model.predict(X_new))
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Plot the data
+    plt.figure(figsize=(8, 6))
+    plt.scatter(X, y)
+    plt.xlabel("GDP per capita (USD)")
+    plt.ylabel("Life satisfaction")
+    plt.title("Life Satisfaction vs GDP per Capita")
+    plt.plot(X, X_b.dot(theta), "r-")
 
-model = LinearRegression()
-model.fit(X_train, y_train)
-
-# Make predictions on the test set
-y_pred = model.predict(X_test)
-
-mse = mean_squared_error(y_test, y_pred)
-print(f'Mean Squared Error: {mse}')
-
-plt.scatter(X_test, y_test, color='black')
-plt.plot(X_test, y_pred, color='blue', linewidth=3)
-plt.title('Simple Linear Regression on Random User Generator API Data')
-plt.xlabel('Number of Characters in Username')
-plt.ylabel('Age')
-plt.show()
+    plt.show()
